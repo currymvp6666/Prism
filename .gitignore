@@ -1,0 +1,20 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+
+# User files
+*.user
+*.suo
+*.userosscache
+*.userprefs
+
+# EF Core
+*.db
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
