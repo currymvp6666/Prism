@@ -1,31 +1,59 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel; // MVVM Toolkit
-
-using Prism.Data;
+﻿using Prism.Data;
 using Prism.Model;
-
+using Prism.Common;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows.Input;
 
 namespace Prism.ViewModel
 {
-    public partial class MemoViewModel : ObservableObject
+    public class MemoViewModel
     {
-        [ObservableProperty]
-        private ObservableCollection<Memo> memos;
+        public ObservableCollection<Memo> Memos { get; set; } = new ObservableCollection<Memo>();
+        public Memo SelectedMemo { get; set; }
 
-        [ObservableProperty]
-        private Memo selectedMemo;
+        public string NewTitle { get; set; }
+        public string NewContent { get; set; }
+
+        public ICommand AddMemoCommand { get; }
 
         public MemoViewModel()
         {
+            AddMemoCommand = new RelayCommand(AddMemo);
             LoadMemos();
         }
 
-        public void LoadMemos()
+        private void LoadMemos()
         {
             using var db = new PrismDbContext();
-            Memos = new ObservableCollection<Memo>(db.Memos.ToList());
+            var list = db.Memos.OrderByDescending(m => m.CreateTime).ToList();
+            Memos.Clear();
+            foreach (var memo in list)
+                Memos.Add(memo);
+        }
+
+        private void AddMemo()
+        {
+            if (string.IsNullOrWhiteSpace(NewTitle)) return;
+
+            using var db = new PrismDbContext();
+            var memo = new Memo
+            {
+                Title = NewTitle,
+                Content = NewContent,
+                CategoryId = 1,
+                ReminderTime = DateTime.Now,
+                CreateTime = DateTime.Now,
+                UpdateTime = DateTime.Now
+            };
+            db.Memos.Add(memo);
+            db.SaveChanges();
+
+            Memos.Insert(0, memo);
+
+            NewTitle = "";
+            NewContent = "";
         }
     }
 }

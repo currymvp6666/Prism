@@ -1,12 +1,49 @@
 ﻿<Window x:Class="Prism.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Prism"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        xmlns:vm="clr-namespace:Prism.ViewModel"
+        Title="备忘录" Height="500" Width="800" Background="#F0F2F5">
+    <Window.DataContext>
+        <vm:MemoViewModel/>
+    </Window.DataContext>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 输入区域 -->
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,15">
+            <TextBox Width="200" Margin="0,0,10,0" Text="{Binding NewTitle, UpdateSourceTrigger=PropertyChanged}"
+                     Padding="5" Background="White" BorderBrush="#CCCCCC" BorderThickness="1"
+                     FontSize="14" VerticalContentAlignment="Center" />
+            <TextBox Width="400" Margin="0,0,10,0" Text="{Binding NewContent, UpdateSourceTrigger=PropertyChanged}"
+                     Padding="5" Background="White" BorderBrush="#CCCCCC" BorderThickness="1"
+                     FontSize="14" VerticalContentAlignment="Center" />
+            <Button Content="新增" Width="80" Command="{Binding AddMemoCommand}"
+                    Background="#4CAF50" Foreground="White" FontWeight="Bold"
+                    BorderBrush="#4CAF50" BorderThickness="1" Padding="5"/>
+        </StackPanel>
+
+        <!-- 备忘录列表 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Memos}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="White" CornerRadius="5" BorderBrush="#DDDDDD" BorderThickness="1"
+                                Padding="10" Margin="0,0,0,10" >
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="16" Foreground="#333333"/>
+                                <TextBlock Text="{Binding Content}" FontSize="14" Foreground="#666666" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding ReminderTime, StringFormat='提醒时间: {0:yyyy-MM-dd HH:mm}'}" 
+                                           FontSize="12" Foreground="#999999" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
 
     </Grid>
 </Window>
