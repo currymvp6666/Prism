@@ -6,25 +6,61 @@ namespace Prism.Data
 {
     public class PrismDbContext : DbContext
     {
-        public DbSet<Memo> Memos { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<Memo> Memos { get; set; }
+        public DbSet<TodoItem> TodoItems { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlServer(@"Server=郭;Database=PrismDB;Trusted_Connection=True;TrustServerCertificate=True;");
+            optionsBuilder.UseSqlServer(
+                @"Server=郭;Database=PrismDB;Trusted_Connection=True;TrustServerCertificate=True;");
         }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // 设置 Category - Memo 关系：一对多
-            modelBuilder.Entity<Memo>()
-                        .HasOne(m => m.Category)
-                        .WithMany(c => c.Memos)
-                        .HasForeignKey(m => m.CategoryId)
-                        .OnDelete(DeleteBehavior.Cascade);
+            // =========================
+            // Category
+            // =========================
+            modelBuilder.Entity<Category>()
+                .Property(c => c.Name)
+                .IsRequired()
+                .HasMaxLength(50);
 
-            // 可选：给分类表默认数据
+            // =========================
+            // Memo - Category (一对多)
+            // =========================
+            modelBuilder.Entity<Memo>()
+                .HasOne(m => m.Category)
+                .WithMany(c => c.Memos)
+                .HasForeignKey(m => m.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Memo>()
+                .Property(m => m.Title)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            // =========================
+            // TodoItem - Category (一对多)
+            // =========================
+            modelBuilder.Entity<TodoItem>()
+                .HasOne(t => t.Category)
+                .WithMany(c => c.TodoItems)
+                .HasForeignKey(t => t.CategoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TodoItem>()
+                .Property(t => t.Title)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            // =========================
+            // 种子数据（关键，防 FK 报错）
+            // =========================
             modelBuilder.Entity<Category>().HasData(
-                new Category { Id = 1, Name = "默认分类" }
+                new Category { Id = 1, Name = "默认" },
+                new Category { Id = 2, Name = "工作" },
+                new Category { Id = 3, Name = "学习" }
             );
         }
     }

@@ -32,11 +32,29 @@ namespace Prism.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "默认"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "工作"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "学习"
+                        });
                 });
 
             modelBuilder.Entity("Prism.Model.Memo", b =>
@@ -62,7 +80,8 @@ namespace Prism.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("UpdateTime")
                         .HasColumnType("datetime2");
@@ -74,15 +93,69 @@ namespace Prism.Migrations
                     b.ToTable("Memos");
                 });
 
+            modelBuilder.Entity("Prism.Model.TodoItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("TodoItems");
+                });
+
             modelBuilder.Entity("Prism.Model.Memo", b =>
                 {
                     b.HasOne("Prism.Model.Category", "Category")
-                        .WithMany()
+                        .WithMany("Memos")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("Prism.Model.TodoItem", b =>
+                {
+                    b.HasOne("Prism.Model.Category", "Category")
+                        .WithMany("TodoItems")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("Prism.Model.Category", b =>
+                {
+                    b.Navigation("Memos");
+
+                    b.Navigation("TodoItems");
                 });
 #pragma warning restore 612, 618
         }
