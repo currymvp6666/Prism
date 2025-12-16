@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Prism.Model
 {
@@ -8,6 +9,18 @@ namespace Prism.Model
         public int Id { get; set; }
 
         private string _title;
+
+        private string _content;
+        public int CategoryId { get; set; }
+        public DateTime ReminderTime { get; set; }
+
+        public DateTime CreateTime { get; set; } = DateTime.Now;
+
+        private DateTime _updateTime = DateTime.Now;
+        [NotMapped]
+        private bool _isVisible = true;
+
+        
         public string Title
         {
             get => _title;
@@ -21,7 +34,6 @@ namespace Prism.Model
             }
         }
 
-        private string _content;
         public string Content
         {
             get => _content;
@@ -35,12 +47,6 @@ namespace Prism.Model
             }
         }
 
-        public int CategoryId { get; set; }
-        public DateTime ReminderTime { get; set; }
-
-        public DateTime CreateTime { get; set; } = DateTime.Now;
-
-        private DateTime _updateTime = DateTime.Now;
         public DateTime UpdateTime
         {
             get => _updateTime;
@@ -50,7 +56,19 @@ namespace Prism.Model
                 OnPropertyChanged(nameof(UpdateTime));
             }
         }
-
+        [NotMapped]
+        public bool IsVisible
+        {
+            get => _isVisible;
+            set
+            {
+                if (_isVisible != value)
+                {
+                    _isVisible = value;
+                    OnPropertyChanged(nameof(IsVisible));
+                }
+            }
+        }
         // 导航属性
         public Category Category { get; set; }
 

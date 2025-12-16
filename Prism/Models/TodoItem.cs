@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Prism.Model
 {
@@ -8,6 +9,20 @@ namespace Prism.Model
         public int Id { get; set; }
 
         private string _title;
+
+        private string _description;
+        public int CategoryId { get; set; }
+        public DateTime CreatedTime { get; set; }
+
+        public Category Category { get; set; }
+
+        private DateTime _dueDate;
+
+        private bool _isCompleted;
+        [NotMapped]
+        private bool _isVisible = true;
+
+       
         public string Title
         {
             get => _title;
@@ -21,7 +36,7 @@ namespace Prism.Model
             }
         }
 
-        private string _description;
+        
         public string Description
         {
             get => _description;
@@ -32,7 +47,7 @@ namespace Prism.Model
             }
         }
 
-        private DateTime _dueDate;
+
         public DateTime DueDate
         {
             get => _dueDate;
@@ -43,12 +58,7 @@ namespace Prism.Model
             }
         }
 
-        public int CategoryId { get; set; }
-        public DateTime CreatedTime { get; set; }
 
-        public Category Category { get; set; }
-
-        private bool _isCompleted;
         public bool IsCompleted
         {
             get => _isCompleted;
@@ -58,6 +68,19 @@ namespace Prism.Model
                 {
                     _isCompleted = value;
                     OnPropertyChanged(nameof(IsCompleted));
+                }
+            }
+        }
+        [NotMapped]
+        public bool IsVisible
+        {
+            get => _isVisible;
+            set
+            {
+                if (_isVisible != value)
+                {
+                    _isVisible = value;
+                    OnPropertyChanged(nameof(IsVisible));
                 }
             }
         }

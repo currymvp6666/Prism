@@ -19,6 +19,14 @@ namespace Prism.ViewModel
         //——————————————————————————————————————————————————
         private readonly MemoService _memoService;
         private readonly TodoService _todoService;
+        private int _totalCount;
+        private int _completedCount;
+        public double CompletionRate =>
+    TotalCount == 0 ? 0 : Math.Round((double)CompletedCount / TotalCount * 100, 1);
+
+        private int _memoCount;
+        private string _currentViewTitle = "仪表盘";
+        public string CurrentDate => DateTime.Now.ToString("yyyy年MM月dd日 dddd");
 
         public ObservableCollection<Memo> Memos { get; set; } = new();
         public ObservableCollection<TodoItem> TodoItems { get; set; } = new();
@@ -28,6 +36,9 @@ namespace Prism.ViewModel
         public ICommand ShowAddTodoDialogCommand { get; }
         public ICommand EditMemoCommand { get; }
         public ICommand EditTodoCommand { get; }   // ★ 补上
+        public ICommand HideTodoCommand { get; }
+        public ICommand HideMemoCommand { get; }
+
 
         //——————————————————————————————————————————————————
         public MemoViewModel()
@@ -40,6 +51,20 @@ namespace Prism.ViewModel
             EditMemoCommand = new RelayCommand<Memo>(async m => await EditMemoAsync(m));
             EditTodoCommand = new RelayCommand<TodoItem>(async t => await EditTodoAsync(t));
 
+            HideTodoCommand = new RelayCommand<TodoItem>(todo =>
+            {
+                if (todo == null) return;
+                todo.IsVisible = false; // 隐藏
+                AddRecentActivity($"隐藏了待办事项: {todo.Title}", "#FF9800");
+            });
+
+            HideMemoCommand = new RelayCommand<Memo>(memo =>
+            {
+                if (memo == null) return;
+                memo.IsVisible = false; // 隐藏
+                AddRecentActivity($"隐藏了备忘录: {memo.Title}", "#FF9800");
+            });
+
             Memos.CollectionChanged += (_, __) => UpdateStatistics();
             TodoItems.CollectionChanged += (_, __) => UpdateStatistics();
 
@@ -49,14 +74,14 @@ namespace Prism.ViewModel
 
         //——————————————————————————————————————————————————
         #region 统计属性
-        private int _totalCount;
+
         public int TotalCount
         {
             get => _totalCount;
             set { _totalCount = value; OnPropertyChanged(nameof(TotalCount)); }
         }
 
-        private int _completedCount;
+
         public int CompletedCount
         {
             get => _completedCount;
@@ -68,28 +93,26 @@ namespace Prism.ViewModel
             }
         }
 
-        public double CompletionRate =>
-            TotalCount == 0 ? 0 : Math.Round((double)CompletedCount / TotalCount * 100, 1);
 
-        private int _memoCount;
         public int MemoCount
         {
             get => _memoCount;
             set { _memoCount = value; OnPropertyChanged(nameof(MemoCount)); }
         }
 
-        private string _currentViewTitle = "仪表盘";
+
         public string CurrentViewTitle
         {
             get => _currentViewTitle;
             set { _currentViewTitle = value; OnPropertyChanged(nameof(CurrentViewTitle)); }
         }
 
-        public string CurrentDate => DateTime.Now.ToString("yyyy年MM月dd日 dddd");
+
         #endregion
 
         //——————————————————————————————————————————————————
         #region 数据加载
+
         private async Task LoadMemosAsync()
         {
             var memos = await _memoService.GetAllMemosAsync();
@@ -140,7 +163,7 @@ namespace Prism.ViewModel
         #endregion
 
         //——————————————————————————————————————————————————
-        #region 新增
+        #region 新增添加
         private async Task ShowAddMemoDialogAsync()
         {
             var window = new AddMemoWindow { Owner = Application.Current.MainWindow };
