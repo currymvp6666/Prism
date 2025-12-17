@@ -54,5 +54,6 @@ namespace Prism.Views
         {
             DialogResult = false;
         }
+
     }
 }

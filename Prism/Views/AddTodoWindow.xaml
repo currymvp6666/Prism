@@ -19,6 +19,8 @@
         <TextBlock Text="描述：" FontWeight="Bold" Grid.Row="1" Margin="0,15,0,0"/>
         <TextBox x:Name="DescriptionTextBox" Grid.Row="1" Margin="0,40,0,0" Height="60" AcceptsReturn="True" TextWrapping="Wrap"/>
 
+        <TextBlock Text="描述：" FontWeight="Bold" Grid.Row="1" Margin="0,15,0,0"/>
+
         <TextBlock Text="截止日期：" FontWeight="Bold" Grid.Row="2" Margin="0,15,0,0"/>
         <DatePicker x:Name="DueDatePicker" Grid.Row="2" Margin="0,40,0,0"/>
 

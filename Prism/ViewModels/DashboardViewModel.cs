@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 
+using Prism.Data;
 using Prism.Model;
 using Prism.Services;
 using Prism.Views;
@@ -14,13 +15,15 @@ using System.Windows.Input;
 
 namespace Prism.ViewModel
 {
-    public class MemoViewModel : INotifyPropertyChanged
+    public class DashboardViewModel : INotifyPropertyChanged
     {
         //——————————————————————————————————————————————————
         private readonly MemoService _memoService;
         private readonly TodoService _todoService;
+        private readonly PrismDbContext _dbContext;
         private int _totalCount;
         private int _completedCount;
+
         public double CompletionRate =>
     TotalCount == 0 ? 0 : Math.Round((double)CompletedCount / TotalCount * 100, 1);
 
@@ -31,38 +34,54 @@ namespace Prism.ViewModel
         public ObservableCollection<Memo> Memos { get; set; } = new();
         public ObservableCollection<TodoItem> TodoItems { get; set; } = new();
         public ObservableCollection<ActivityItem> RecentActivities { get; set; } = new();
-
         public ICommand ShowAddMemoDialogCommand { get; }
         public ICommand ShowAddTodoDialogCommand { get; }
         public ICommand EditMemoCommand { get; }
         public ICommand EditTodoCommand { get; }   // ★ 补上
         public ICommand HideTodoCommand { get; }
         public ICommand HideMemoCommand { get; }
-
+        public ICommand ToggleCompletedCommand { get; }
+        public ICommand SaveTodoCommand { get; }
 
         //——————————————————————————————————————————————————
-        public MemoViewModel()
+        public DashboardViewModel()
         {
             _memoService = new MemoService();
             _todoService = new TodoService();
-
-            ShowAddMemoDialogCommand = new RelayCommand(async () => await ShowAddMemoDialogAsync());
-            ShowAddTodoDialogCommand = new RelayCommand(async () => await ShowAddTodoDialogAsync());
+            _dbContext = new PrismDbContext();
+            ShowAddMemoDialogCommand = new RelayCommand( () =>  ShowAddMemoDialogAsync());
+            ShowAddTodoDialogCommand = new RelayCommand( () =>  ShowAddTodoDialogAsync());
             EditMemoCommand = new RelayCommand<Memo>(async m => await EditMemoAsync(m));
             EditTodoCommand = new RelayCommand<TodoItem>(async t => await EditTodoAsync(t));
 
-            HideTodoCommand = new RelayCommand<TodoItem>(todo =>
-            {
-                if (todo == null) return;
-                todo.IsVisible = false; // 隐藏
-                AddRecentActivity($"隐藏了待办事项: {todo.Title}", "#FF9800");
-            });
 
             HideMemoCommand = new RelayCommand<Memo>(memo =>
             {
                 if (memo == null) return;
                 memo.IsVisible = false; // 隐藏
                 AddRecentActivity($"隐藏了备忘录: {memo.Title}", "#FF9800");
+            });
+
+            HideTodoCommand = new RelayCommand<TodoItem>(async todo =>
+            {
+                if (todo == null) return;
+                todo.IsVisible = false; // 隐藏
+                await _todoService.UpdateTodoAsync(todo);
+                AddRecentActivity($"隐藏了备忘录: {todo.Title}", "#FF9800");
+            });
+
+            ToggleCompletedCommand = new RelayCommand<TodoItem>(async todo =>
+            {
+
+                if (todo == null) return;
+                todo.IsCompleted = !todo.IsCompleted;
+                await _todoService.UpdateTodoAsync(todo);
+            });
+
+            SaveTodoCommand = new RelayCommand<TodoItem>(async todo =>
+            {
+                if (todo == null) return;
+                await _todoService.UpdateTodoAsync(todo);
             });
 
             Memos.CollectionChanged += (_, __) => UpdateStatistics();
@@ -127,7 +146,9 @@ namespace Prism.ViewModel
             TodoItems.Clear();
             foreach (var t in todos)
             {
+                t.IsVisible = !t.IsCompleted;
                 t.PropertyChanged += Todo_PropertyChanged;
+                //if (!t.IsCompleted)
                 TodoItems.Add(t);
             }
         }
@@ -239,7 +260,7 @@ namespace Prism.ViewModel
 
         //——————————————————————————————————————————————————
         #region 最近活动
-        private void AddRecentActivity(string text, string color)
+        private  void AddRecentActivity(string text, string color)
         {
             RecentActivities.Insert(0, new ActivityItem
             {
