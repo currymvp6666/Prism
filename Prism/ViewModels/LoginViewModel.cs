@@ -1,17 +1,80 @@
-﻿using Prism.Services;
-using Prism.Models;
+﻿using Prism.Models;
+using Prism.Services;
+using Prism.Views;
+
 using System;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using Prism.Views;
 
 namespace Prism.ViewModels
 {
     public class LoginViewModel : INotifyPropertyChanged
     {
         private readonly LoginService _loginService;
+        private readonly MailService _mailService = new MailService();
+
+
+        #region 登录属性
+        private string _generatedCode; // 后台生成的随机码
+        private string _verificationCode; // 用户输入的验证码
+        private string _newPassword; // 用户输入的新密码
+        private string _sendBtnText = "获取验证码";
+        private bool _isSendBtnEnabled = true;
+
+        public string VerificationCode
+        {
+            get => _verificationCode;
+            set
+            {
+                if (_verificationCode != value)
+                {
+                    _verificationCode = value;
+                    OnPropertyChanged(nameof(VerificationCode));
+                }
+            }
+        }
+        public string NewPassword
+        {
+            get => _newPassword;
+            set
+            {
+                if (_newPassword != value)
+                {
+                    _newPassword = value;
+                    OnPropertyChanged(nameof(NewPassword));
+                }
+            }
+        }
+        public string SendBtnText
+        {
+            get => _sendBtnText;
+            set
+            {
+                if (_sendBtnText != value)
+                {
+                    _sendBtnText = value;
+                    OnPropertyChanged(nameof(SendBtnText));
+                }
+            }
+        }
+        public bool IsSendBtnEnabled
+        {
+            get => _isSendBtnEnabled;
+            set
+            {
+                if (_isSendBtnEnabled != value)
+                {
+                    _isSendBtnEnabled = value;
+                    OnPropertyChanged(nameof(IsSendBtnEnabled));
+                }
+            }
+        }
+        #endregion
+
+
 
         // 1. 声明数据模型（供 View 绑定）
         private Login _loginModel;
@@ -30,6 +93,9 @@ namespace Prism.ViewModels
         public ICommand RegisterCommand { get; }
         public ICommand RegisterToShowCommand { get; }
         public ICommand BackToLoginCommand { get; }
+        public ICommand ShowResetPswCommand { get; }
+        public ICommand SendCodeCommand { get; }
+        public ICommand ConfirmResetCommand { get; }
 
         public LoginViewModel()
         {
@@ -40,7 +106,10 @@ namespace Prism.ViewModels
             LoginCommand = new RelayCommand(async (o) => await ExecuteLogin());
             RegisterCommand = new RelayCommand(async (o) => await ExecuteRegister());
             RegisterToShowCommand = new RelayCommand(async (o) => await ExecuteToShowRegister());
-            BackToLoginCommand = new RelayCommand(async (o) => await CloseRegisterWindowasync());
+            BackToLoginCommand = new RelayCommand(o => CloseCurWindowToLogin());
+            ShowResetPswCommand = new RelayCommand(o => ShowResetWindow());
+            SendCodeCommand = new RelayCommand(async _ => await ExecuteSendCode());
+            ConfirmResetCommand = new RelayCommand(async _ => await ExecuteConfirmReset());
         }
 
         // 4. 登录逻辑
@@ -80,28 +149,25 @@ namespace Prism.ViewModels
             }
         }
 
-        private async Task ExecuteToShowRegister()
-        {
-            var registerWindow = new RegisterView();
-            registerWindow.Show();
-            foreach (Window item in Application.Current.Windows)
-            {
-                if (item is Views.LoginView)
-                {
-                    item.Close();
-                    break;
-                }
-            }
-        }
+
 
         private async Task ExecuteRegister()
         {
             // 1. 基础非空校验
             if (string.IsNullOrWhiteSpace(LoginModel.UserName) ||
+                string.IsNullOrWhiteSpace(LoginModel.Email) ||
                 string.IsNullOrWhiteSpace(LoginModel.UserPsw) ||
                 string.IsNullOrWhiteSpace(LoginModel.UserConfirmPsw))
             {
                 MessageBox.Show("请填写完整的注册信息");
+                return;
+            }
+            // --- 2. 邮箱格式校验（正则表达式） ---
+            // 这是一个通用的邮箱验证正则
+            string emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+            if (!Regex.IsMatch(LoginModel.Email, emailPattern))
+            {
+                MessageBox.Show("邮箱格式不正确，请输入有效的邮箱地址（如：example@qq.com）");
                 return;
             }
             // 2. 确认密码比对 (这是最重要的一步)
@@ -125,11 +191,7 @@ namespace Prism.ViewModels
                 App.Current.Dispatcher.Invoke(() =>
                 {
                     // 弹出新的登录窗体
-                    var loginView = new Views.LoginView();
-                    loginView.Show();
-
-                    // 关闭当前注册窗体
-                    CloseRegisterWindow();
+                    CloseCurWindowToLogin();
                 });
             }
             else
@@ -145,25 +207,187 @@ namespace Prism.ViewModels
             }
         }
 
-        private async Task CloseRegisterWindowasync()
+
+
+
+
+
+
+
+
+        private async Task ExecuteSendCode()
         {
-            await Task.Delay(0);
+            if (string.IsNullOrWhiteSpace(LoginModel.Email))
+            {
+                MessageBox.Show("请先输入注册时的邮箱地址。");
+                return;
+            }
+
+            // 2. 关键核心逻辑：校验用户名和邮箱是否匹配
+            var matchResult = await _loginService.VerifyUserEmailMatchAsync(LoginModel.UserName, LoginModel.Email);
+            if (!matchResult.IsSuccess)
+            {
+                // 如果不匹配，直接拦截，不发邮件
+                MessageBox.Show(matchResult.Message);
+                return;
+            }
+
+
+            // 1. 生成6位随机验证码
+            _generatedCode = new Random().Next(100000, 999999).ToString();
+
+            // 2. 按钮进入倒计时状态
+            IsSendBtnEnabled = false;
+
+            // 3. 调用你的 MailService 发送真实邮件
+            var result = await _mailService.SendCodeAsync(LoginModel.Email, _generatedCode);
+
+            if (result.success)
+            {
+                MessageBox.Show("验证码已发送，请查收邮箱。");
+                StartTimer(); // 启动60秒倒计时方法
+            }
+            else
+            {
+                MessageBox.Show(result.message);
+                IsSendBtnEnabled = true;
+            }
+        }
+
+        // 倒计时逻辑
+        private void StartTimer()
+        {
+            int seconds = 60;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            timer.Tick += (s, e) =>
+            {
+                if (seconds > 0)
+                {
+                    seconds--;
+                    SendBtnText = $"{seconds}s后重试";
+                }
+                else
+                {
+                    timer.Stop();
+                    SendBtnText = "获取验证码";
+                    IsSendBtnEnabled = true;
+                }
+            };
+            timer.Start();
+        }
+
+
+        //找回密码
+        private async Task ExecuteConfirmReset()
+        {
+            // --- 1. 前端基础校验 ---
+            if (string.IsNullOrWhiteSpace(LoginModel.Email))
+            {
+                MessageBox.Show("邮箱不能为空");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(VerificationCode))
+            {
+                MessageBox.Show("请输入验证码");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(NewPassword))
+            {
+                MessageBox.Show("请输入新密码");
+                return;
+            }
+
+            // --- 2. 验证码校验 ---
+            // _generatedCode 是你发送邮件时在后台生成的随机数
+            if (VerificationCode != _generatedCode)
+            {
+                MessageBox.Show("验证码错误，请重新输入");
+                return;
+            }
+
+            // --- 3. 调用 Service 执行修改 ---
+            var result = await _loginService.UpdatePasswordByEmailAsync(LoginModel.Email, NewPassword);
+
+            if (result.IsSuccess)
+            {
+                MessageBox.Show("密码已成功重置！");
+
+                // 成功后关闭重置窗口并跳转回登录
+                CloseCurWindowToLogin();
+            }
+            else
+            {
+                MessageBox.Show(result.Message);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+        #region 退出当前界面到其他界面
+        private async Task ExecuteToShowRegister()
+        {
+            var registerWindow = new RegisterView();
+            registerWindow.Show();
+            foreach (Window item in Application.Current.Windows)
+            {
+                if (item is Views.LoginView)
+                {
+                    item.Close();
+                    break;
+                }
+            }
+        }
+
+        private void ShowResetWindow()
+        {
+            var resetPasswordView = new ResetPasswordView();
+            resetPasswordView.Show();
+            foreach (Window item in Application.Current.Windows)
+            {
+                if (item is Views.LoginView)
+                {
+                    item.Close();
+                    break;
+                }
+            }
+        }
+        private void CloseCurWindowToLogin()
+        {
             var loginView = new Views.LoginView();
             loginView.Show();
-            CloseRegisterWindow();
+            foreach (Window item in Application.Current.Windows)
+            {
+                if (item is Views.ResetPasswordView)
+                {
+                    item.Close();
+                    break;
+                }
+                else if (item is Views.RegisterView)
+                {
+                    item.Close();
+                    break;
+                }
+            }
         }
+        #endregion
 
-        private void CloseRegisterWindow()
-        {
-            // 查找当前的 RegisterView 并关闭
-            var win = App.Current.Windows.OfType<Window>().FirstOrDefault(w => w is Views.RegisterView);
-            win?.Close();
-        }
 
-        #region INotifyPropertyChanged
+
+        #region 属性更改通知
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         #endregion
+
+
+
     }
 }

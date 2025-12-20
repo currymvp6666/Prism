@@ -11,48 +11,6 @@
     <Window.DataContext>
         <vm:LoginViewModel/>
     </Window.DataContext>
-    <Window.Resources>
-        <Style x:Key="LoginInputStyle" TargetType="TextBox">
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="Margin" Value="0,0,0,20"/>
-            <Setter Property="BorderBrush" Value="#DDD"/>
-            <Style.Resources>
-                <Style TargetType="Border">
-                    <Setter Property="CornerRadius" Value="6"/>
-                </Style>
-            </Style.Resources>
-        </Style>
-
-        <Style x:Key="LinkButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="#007AFF"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <TextBlock Text="{TemplateBinding Content}" 
-                                   TextDecorations="None" 
-                                   VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="TextDecorations" Value="Underline"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
-
     <Grid>
         <Border Background="White" CornerRadius="20" Width="340" 
                 VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -73,7 +31,12 @@
                 <TextBlock Text="密码" FontSize="12" FontWeight="Bold" Foreground="#666" Margin="0,0,0,8"/>
                 <TextBox Style="{StaticResource LoginInputStyle}"
                          Text="{Binding LoginModel.UserPsw, UpdateSourceTrigger=PropertyChanged}"/>
-
+                <Button Content="忘记密码？" 
+        Style="{StaticResource LinkButtonStyle}"
+        Command="{Binding ShowResetPswCommand}"
+        HorizontalAlignment="Right"
+        FontSize="11"
+        Margin="0,5,0,0"/>
                 <Button Content="登 录" 
                         Command="{Binding LoginCommand}"
                         IsDefault="True"

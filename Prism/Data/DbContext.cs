@@ -71,6 +71,14 @@ namespace Prism.Data
                 entity.HasIndex(l => l.UserName)
                     .IsUnique();
 
+                // --- 新增 Email 配置 ---
+                entity.Property(l => l.Email)
+                      .IsRequired()      // 必填
+                      .HasMaxLength(100); // 长度建议长一点
+
+                entity.HasIndex(l => l.Email) // 设置唯一索引，防止重复注册
+                      .IsUnique();
+
                 // 配置 UserPsw：必填，长度 100（为了后续存储加密后的哈希值，建议设长一点）
                 entity.Property(l => l.UserPsw)
                     .IsRequired()

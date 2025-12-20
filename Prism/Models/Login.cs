@@ -12,6 +12,7 @@ namespace Prism.Models
     {
 
         private string _userName;
+        private string _email;
         private string _userPsw;
         [NotMapped]
         private string _userConfirmPsw;
@@ -51,6 +52,18 @@ namespace Prism.Models
                 {
                     _userPsw = value;
                     OnPropertyChanged(nameof(UserPsw));
+                }
+            }
+        }
+        public string Email
+        {
+            get => _email;
+            set
+            {
+                if (_email != value)
+                {
+                    _email = value;
+                    OnPropertyChanged(nameof(Email));
                 }
             }
         }

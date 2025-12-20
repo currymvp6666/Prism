@@ -28,8 +28,13 @@ namespace Prism.Services
             {
                 // 2. 检查用户名是否存在 (利用你配置的 HasIndex 唯一性约束)
                 // 使用 ToLower() 确保用户名不区分大小写
-                var exists = await _db.Logins.AnyAsync(u => u.UserName.ToLower() == registerInfo.UserName.ToLower());
-                if (exists)
+                var UserName_exists = await _db.Logins.AnyAsync(u => u.UserName.ToLower() == registerInfo.UserName.ToLower());
+                if (UserName_exists)
+                {
+                    return ServiceResult.Failure("用户名已存在，请换一个吧。");
+                }
+                var Email_exists = await _db.Logins.AnyAsync(u => u.Email.ToLower() == registerInfo.Email.ToLower());
+                if (Email_exists)
                 {
                     return ServiceResult.Failure("用户名已存在，请换一个吧。");
                 }
@@ -39,6 +44,7 @@ namespace Prism.Services
                 var newUser = new Login
                 {
                     UserName = registerInfo.UserName,
+                    Email = registerInfo.Email,
                     UserPsw = registerInfo.UserPsw // 建议此处先手动测试，后期再加加密逻辑
                 };
 
@@ -57,6 +63,53 @@ namespace Prism.Services
                 return ServiceResult.Failure($"数据库错误: {ex.Message}");
             }
         }
+        public async Task<ServiceResult> UpdatePasswordByEmailAsync(string email, string newPassword)
+        {
+            try
+            {
+                // 1. 在数据库中查找该邮箱对应的用户
+                var user = await _db.Logins.FirstOrDefaultAsync(u => u.Email == email);
+
+                if (user == null)
+                {
+                    return ServiceResult.Failure("未找到该邮箱绑定的用户。");
+                }
+
+                // 2. 修改密码（直接明文覆盖）
+                user.UserPsw = newPassword;
+
+                // 3. 提交修改到数据库
+                await _db.SaveChangesAsync();
+
+                return ServiceResult.Success();
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult.Failure($"数据库更新失败: {ex.Message}");
+            }
+        }
+
+        public async Task<ServiceResult> VerifyUserEmailMatchAsync(string userName, string email)
+        {
+            try
+            {
+                // 查找用户名和邮箱同时匹配的记录
+                var user = await _db.Logins.FirstOrDefaultAsync(u => u.UserName == userName && u.Email == email);
+
+                if (user == null)
+                {
+                    return ServiceResult.Failure("用户名与绑定的邮箱不匹配，请核对信息。");
+                }
+
+                return ServiceResult.Success();
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult.Failure($"数据库查询异常: {ex.Message}");
+            }
+        }
+
+
     }
     public class ServiceResult
     {
