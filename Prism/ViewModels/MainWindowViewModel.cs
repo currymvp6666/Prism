@@ -1,4 +1,6 @@
-﻿using Prism.Views;
+﻿using CommunityToolkit.Mvvm.Input;
+
+using Prism.Views;
 
 using System;
 using System.ComponentModel;
@@ -10,7 +12,7 @@ namespace Prism.ViewModel
 {
     public class MainWindowViewModel : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+
 
         private object _currentView;
         public object CurrentView
@@ -19,9 +21,10 @@ namespace Prism.ViewModel
             set
             {
                 _currentView = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentView)));
+                OnPropertyChanged(nameof(CurrentView));
             }
         }
+
 
         public ICommand NavigateCommand { get; }
 
@@ -30,7 +33,12 @@ namespace Prism.ViewModel
             // 默认显示 Dashboard
             CurrentView = new DashboardView();
 
-            NavigateCommand = new RelayCommand<string>(Navigate);
+            NavigateCommand = new RelayCommand(async p =>
+            {
+                Navigate(p as string);
+                await Task.CompletedTask;
+            });
+
         }
 
         private void Navigate(string page)
@@ -53,16 +61,12 @@ namespace Prism.ViewModel
                     //    CurrentView = new SettingsView();
                     //    break;
             }
-        }
-    }
 
-    // 简单 RelayCommand
-    public class RelayCommand<T> : ICommand
-    {
-        private readonly Action<T> _execute;
-        public RelayCommand(Action<T> execute) => _execute = execute;
-        public bool CanExecute(object parameter) => true;
-        public event EventHandler CanExecuteChanged;
-        public void Execute(object parameter) => _execute((T)parameter);
+        }
+        #region 属性变更
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        #endregion
     }
 }

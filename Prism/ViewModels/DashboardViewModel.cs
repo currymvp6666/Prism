@@ -11,6 +11,7 @@ using System.ComponentModel;
 using System.Linq; // ★ 必须
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace Prism.ViewModel
@@ -23,6 +24,8 @@ namespace Prism.ViewModel
         private readonly PrismDbContext _dbContext;
         private int _totalCount;
         private int _completedCount;
+        private string _selectedTodoFilter;
+        private string _searchText;
 
         public double CompletionRate =>
     TotalCount == 0 ? 0 : Math.Round((double)CompletedCount / TotalCount * 100, 1);
@@ -33,6 +36,7 @@ namespace Prism.ViewModel
 
         public ObservableCollection<Memo> Memos { get; set; } = new();
         public ObservableCollection<TodoItem> TodoItems { get; set; } = new();
+        public ObservableCollection<TodoItem> AllTodoItems { get; set; } = new();
         public ObservableCollection<ActivityItem> RecentActivities { get; set; } = new();
         public ICommand ShowAddMemoDialogCommand { get; }
         public ICommand ShowAddTodoDialogCommand { get; }
@@ -41,54 +45,66 @@ namespace Prism.ViewModel
         public ICommand HideTodoCommand { get; }
         public ICommand HideMemoCommand { get; }
         public ICommand ToggleCompletedCommand { get; }
-        public ICommand SaveTodoCommand { get; }
-
         //——————————————————————————————————————————————————
         public DashboardViewModel()
         {
             _memoService = new MemoService();
             _todoService = new TodoService();
             _dbContext = new PrismDbContext();
-            ShowAddMemoDialogCommand = new RelayCommand( () =>  ShowAddMemoDialogAsync());
-            ShowAddTodoDialogCommand = new RelayCommand( () =>  ShowAddTodoDialogAsync());
-            EditMemoCommand = new RelayCommand<Memo>(async m => await EditMemoAsync(m));
-            EditTodoCommand = new RelayCommand<TodoItem>(async t => await EditTodoAsync(t));
-
-
-            HideMemoCommand = new RelayCommand<Memo>(memo =>
+            ShowAddMemoDialogCommand = new RelayCommand(async _ =>
             {
-                if (memo == null) return;
-                memo.IsVisible = false; // 隐藏
-                AddRecentActivity($"隐藏了备忘录: {memo.Title}", "#FF9800");
+                await ShowAddMemoDialogAsync();
             });
 
-            HideTodoCommand = new RelayCommand<TodoItem>(async todo =>
+            ShowAddTodoDialogCommand = new RelayCommand(async _ =>
             {
+                await ShowAddTodoDialogAsync();
+            });
+
+            EditMemoCommand = new RelayCommand(async m =>
+            {
+                EditMemoAsync(m as Memo);
+                await Task.CompletedTask;
+            });
+            EditTodoCommand = new RelayCommand(async t =>
+            {
+                EditTodoAsync(t as TodoItem);
+                await Task.CompletedTask;
+            });
+
+            HideMemoCommand = new RelayCommand(memoObj =>
+            {
+                var memo = memoObj as Memo;
+                if (memo == null) return Task.CompletedTask;
+
+                memo.IsVisible = false; // 仅 UI 隐藏
+                AddRecentActivity($"隐藏了备忘录: {memo.Title}", "#FF9800");
+
+                return Task.CompletedTask;
+            });
+
+            HideTodoCommand = new RelayCommand(async todoObj =>
+            {
+                var todo = todoObj as TodoItem;
                 if (todo == null) return;
                 todo.IsVisible = false; // 隐藏
+                 AddRecentActivity($"隐藏了备忘录: {todo.Title}", "#FF9800");
                 await _todoService.UpdateTodoAsync(todo);
-                AddRecentActivity($"隐藏了备忘录: {todo.Title}", "#FF9800");
             });
 
-            ToggleCompletedCommand = new RelayCommand<TodoItem>(async todo =>
+            ToggleCompletedCommand = new RelayCommand(async todoObj =>
             {
-
+                var todo = todoObj as TodoItem;
                 if (todo == null) return;
                 todo.IsCompleted = !todo.IsCompleted;
                 await _todoService.UpdateTodoAsync(todo);
             });
-
-            SaveTodoCommand = new RelayCommand<TodoItem>(async todo =>
-            {
-                if (todo == null) return;
-                await _todoService.UpdateTodoAsync(todo);
-            });
-
             Memos.CollectionChanged += (_, __) => UpdateStatistics();
             TodoItems.CollectionChanged += (_, __) => UpdateStatistics();
 
             _ = LoadMemosAsync();
             _ = LoadTodoItemsAsync();
+            _ = LoadAllTodoItemsAsync();
         }
 
         //——————————————————————————————————————————————————
@@ -100,7 +116,6 @@ namespace Prism.ViewModel
             set { _totalCount = value; OnPropertyChanged(nameof(TotalCount)); }
         }
 
-
         public int CompletedCount
         {
             get => _completedCount;
@@ -111,7 +126,26 @@ namespace Prism.ViewModel
                 OnPropertyChanged(nameof(CompletionRate));
             }
         }
-
+        public string SelectedTodoFilter
+        {
+            get => _selectedTodoFilter;
+            set
+            {
+                _selectedTodoFilter = value;
+                OnPropertyChanged(nameof(SelectedTodoFilter));
+                ApplyTodoFilter();
+            }
+        }
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                _searchText = value;
+                OnPropertyChanged(nameof(SearchText));
+                ApplyTodoFilter();
+            }
+        }
 
         public int MemoCount
         {
@@ -139,6 +173,13 @@ namespace Prism.ViewModel
             foreach (var m in memos)
                 Memos.Add(m);
         }
+        private async Task LoadAllTodoItemsAsync()
+        {
+            var alltodos = await _todoService.GetAllTodosAsync();
+            AllTodoItems.Clear();
+            foreach (var m in alltodos)
+                AllTodoItems.Add(m);
+        }
 
         private async Task LoadTodoItemsAsync()
         {
@@ -148,7 +189,6 @@ namespace Prism.ViewModel
             {
                 t.IsVisible = !t.IsCompleted;
                 t.PropertyChanged += Todo_PropertyChanged;
-                //if (!t.IsCompleted)
                 TodoItems.Add(t);
             }
         }
@@ -230,7 +270,36 @@ namespace Prism.ViewModel
             }
         }
         #endregion
+        private void ApplyTodoFilter()
+        {
+            TodoItems.Clear();
 
+            var filtered = AllTodoItems.AsEnumerable();
+
+            // ① 状态筛选
+            switch (SelectedTodoFilter)
+            {
+                case "进行中":
+                    filtered = filtered.Where(t => !t.IsCompleted);
+                    break;
+
+                case "已完成":
+                    filtered = filtered.Where(t => t.IsCompleted);
+                    break;
+            }
+
+            // ② 关键字搜索（标题 + 描述）
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                filtered = filtered.Where(t =>
+                    t.Title.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                    (t.Description?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false)
+                );
+            }
+
+            foreach (var todo in filtered)
+                TodoItems.Add(todo);
+        }
         //——————————————————————————————————————————————————
         #region 编辑
         private async Task EditMemoAsync(Memo memo)

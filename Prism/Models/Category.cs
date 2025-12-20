@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Prism.Models;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +16,7 @@ namespace Prism.Model
         // 导航属性
         public ICollection<Memo> Memos { get; set; }
         public ICollection<TodoItem> TodoItems { get; set; }
+        public ICollection<Login> Logins { get; set; }
     }
 }
 
