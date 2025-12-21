@@ -88,7 +88,7 @@
         VerticalAlignment="Center"
         HorizontalAlignment="Right">
 
-                    <Grid>
+                    <Grid Height="36" VerticalAlignment="Top">
                         <!-- 输入框 -->
                         <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                  Background="Transparent"

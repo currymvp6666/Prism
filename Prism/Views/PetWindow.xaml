@@ -1,0 +1,55 @@
+﻿<Window x:Class="Prism.Views.PetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:Prism.ViewModel"
+        Title="AI宠物" Height="350" Width="300"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </Window.Resources>
+    <Window.DataContext>
+        <vm:PetViewModel/>
+    </Window.DataContext>
+
+    <Grid>
+        <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center">
+
+            <Grid Visibility="{Binding IsChatVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,10">
+                <Border Background="White" CornerRadius="15" Padding="12" MaxWidth="240" 
+                        BorderBrush="#2196F3" BorderThickness="1.5">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="15" Opacity="0.2" ShadowDepth="2"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <TextBlock Text="{Binding AiText}" TextWrapping="Wrap" FontSize="13" Foreground="#333"/>
+                        
+                        <TextBox Margin="0,8,0,0" Height="28" VerticalContentAlignment="Center"
+                                 IsEnabled="{Binding IsInputEnabled}"
+                                 Text="{Binding UserInput, UpdateSourceTrigger=PropertyChanged}">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SendCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </StackPanel>
+                </Border>
+                <Path Data="M 0,0 L 10,10 L 20,0 Z" Fill="White" Stroke="#2196F3" 
+                      HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-9.5"/>
+            </Grid>
+
+            <Image x:Name="PetImage" Source="/kunkun.png" Width="130" Height="130" 
+                   Cursor="Hand" RenderTransformOrigin="0.5,0.5"
+                   MouseLeftButtonDown="Pet_MouseLeftButtonDown"
+                   MouseLeftButtonUp="Pet_MouseLeftButtonUp">
+                
+                <Image.InputBindings>
+                    <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding ToggleChatCommand}"/>
+                </Image.InputBindings>
+                
+                <Image.RenderTransform>
+                    <ScaleTransform ScaleX="{Binding Scale}" ScaleY="{Binding Scale}"/>
+                </Image.RenderTransform>
+            </Image>
+        </StackPanel>
+    </Grid>
+</Window>

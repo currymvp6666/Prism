@@ -26,6 +26,7 @@ namespace Prism.ViewModel
         private int _completedCount;
         private string _selectedTodoFilter;
         private string _searchText;
+        private string _searchTextMemo;
 
         public double CompletionRate =>
     TotalCount == 0 ? 0 : Math.Round((double)CompletedCount / TotalCount * 100, 1);
@@ -35,6 +36,7 @@ namespace Prism.ViewModel
         public string CurrentDate => DateTime.Now.ToString("yyyy年MM月dd日 dddd");
 
         public ObservableCollection<Memo> Memos { get; set; } = new();
+        public ObservableCollection<Memo> AllMemos { get; set; } = new();
         public ObservableCollection<TodoItem> TodoItems { get; set; } = new();
         public ObservableCollection<TodoItem> AllTodoItems { get; set; } = new();
         public ObservableCollection<ActivityItem> RecentActivities { get; set; } = new();
@@ -46,9 +48,10 @@ namespace Prism.ViewModel
         public ICommand HideMemoCommand { get; }
         public ICommand ToggleCompletedCommand { get; }
         //——————————————————————————————————————————————————
+        #region 构造函数
         public DashboardViewModel()
         {
-            _memoService = new MemoService();
+            _memoService = new  MemoService();
             _todoService = new TodoService();
             _dbContext = new PrismDbContext();
             ShowAddMemoDialogCommand = new RelayCommand(async _ =>
@@ -102,11 +105,15 @@ namespace Prism.ViewModel
             Memos.CollectionChanged += (_, __) => UpdateStatistics();
             TodoItems.CollectionChanged += (_, __) => UpdateStatistics();
 
+            MemoService.MemoChanged += async () => await LoadMemosAsync();
+            
+
             _ = LoadMemosAsync();
+            _ = LoadAllMemosAsync();
             _ = LoadTodoItemsAsync();
             _ = LoadAllTodoItemsAsync();
         }
-
+        #endregion
         //——————————————————————————————————————————————————
         #region 统计属性
 
@@ -146,6 +153,16 @@ namespace Prism.ViewModel
                 ApplyTodoFilter();
             }
         }
+        public string SearchTextMemo
+        {
+            get => _searchTextMemo;
+            set
+            {
+                _searchTextMemo = value;
+                OnPropertyChanged(nameof(SearchTextMemo));
+                ApplyMemoFilter();
+            }
+        }
 
         public int MemoCount
         {
@@ -172,6 +189,13 @@ namespace Prism.ViewModel
             Memos.Clear();
             foreach (var m in memos)
                 Memos.Add(m);
+        }
+        private async Task LoadAllMemosAsync()
+        {
+            var memos = await _memoService.GetAllMemosAsync();
+            AllMemos.Clear();
+            foreach (var m in memos)
+                AllMemos.Add(m);
         }
         private async Task LoadAllTodoItemsAsync()
         {
@@ -299,6 +323,24 @@ namespace Prism.ViewModel
 
             foreach (var todo in filtered)
                 TodoItems.Add(todo);
+        }
+        private void ApplyMemoFilter()
+        {
+            Memos.Clear();
+
+            var filtered = AllMemos.AsEnumerable();
+
+            // 关键字搜索（标题 + 描述）
+            if (!string.IsNullOrWhiteSpace(SearchTextMemo))
+            {
+                filtered = filtered.Where(t =>
+                    t.Title.Contains(SearchTextMemo, StringComparison.OrdinalIgnoreCase) ||
+                    (t.Content?.Contains(SearchTextMemo, StringComparison.OrdinalIgnoreCase) ?? false)
+                );
+            }
+
+            foreach (var todo in filtered)
+                Memos.Add(todo);
         }
         //——————————————————————————————————————————————————
         #region 编辑

@@ -8,6 +8,7 @@ namespace Prism.Services
 {
     public class MemoService
     {
+        public static event Action MemoChanged;
         // 获取所有备忘录
         public async Task<List<Memo>> GetAllMemosAsync()
         {
@@ -24,6 +25,8 @@ namespace Prism.Services
             using var db = new PrismDbContext();
             db.Memos.Add(memo);
             await db.SaveChangesAsync();
+            // 核心：触发事件
+            MemoChanged?.Invoke();
         }
 
         // 更新备忘录
